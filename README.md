@@ -1,0 +1,1 @@
+# nginx-proxy-manager_management-Interface
