@@ -172,6 +172,11 @@
                 box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
             }
 
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
         .btn-danger {
             background: #dc3545;
             color: white;
@@ -182,6 +187,16 @@
             .btn-danger:hover {
                 background: #c82333;
             }
+
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+
+        .btn-warning {
+            background: #ffc107;
+            color: white;
+        }
 
         .ip-list {
             margin-top: 30px;
@@ -285,11 +300,9 @@
         .btn-uniform-size {
             width: 90px;
             height: 30px !important;
-            /* Override Bootstrap Padding */
             padding: 0 !important;
-            /* Ensure Text Centering */
-            line-height: 30px !important; /* Vertical centering */
-            text-align: center !important; /* Horizontal centering */
+            line-height: 30px !important;
+            text-align: center !important;
         }
 
         #rulesTableBody tr {
@@ -299,6 +312,58 @@
 
         #rulesTableBody.tr-fade-out {
             opacity: 0;
+        }
+
+        .filter-buttons {
+            margin-bottom: 15px;
+        }
+
+            .filter-buttons .btn {
+                margin-right: 10px;
+            }
+
+        .pagination {
+            display: flex;
+            list-style: none;
+            padding: 0;
+            margin: 20px 0;
+            justify-content: center;
+        }
+
+        .page-item {
+            margin: 0 5px;
+        }
+
+        .page-link {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            color: #667eea;
+            text-decoration: none;
+            cursor: pointer;
+        }
+
+        .page-item.active .page-link {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        .page-item.disabled .page-link {
+            color: #ccc;
+            cursor: not-allowed;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            align-items: center;
+            justify-content: center;
         }
     </style>
 </head>
@@ -374,12 +439,12 @@
             <hr style="margin: 30px 0;">
 
             <!-- Filter Buttons -->
-            <div class="filter-buttons" style="margin-bottom: 15px;">
+            <div class="filter-buttons">
                 <button class="btn btn-secondary" onclick="filterRules('all')">All</button>
                 <button class="btn btn-secondary" onclick="filterRules('manual')">Manual</button>
                 <button class="btn btn-secondary" onclick="filterRules('automatic')">Automatic</button>
                 <button class="btn btn-secondary" onclick="filterRules('malicious')">Malicious</button>
-                <button class="btn btn-danger" id="clearAllButton" style="margin-left: 239px" onclick="showClearModal()">Remove All Filtered IPs</button>
+                <button class="btn btn-danger" id="clearAllButton" style="display: none;" onclick="showClearModal()">Remove All Filtered IPs</button>
             </div>
 
             <!-- Scrollable Table Wrapper -->
@@ -395,7 +460,6 @@
                         </tr>
                     </thead>
                     <tbody id="rulesTableBody">
-                        @* Initial load of first page *@
                         @foreach (var rule in Model.IpRules)
                         {
                             <tr data-type="@rule.addType.ToLower()">
@@ -414,15 +478,13 @@
                 </table>
             </div>
 
-            @* Pagination Buttons *@
             <nav aria-label="IP rules pagination">
                 <ul class="pagination justify-content-center mt-2" id="paginationContainer">
-                    @* Initial pagination buttons rendered server-side *@
                 </ul>
             </nav>
 
             <!-- Modal -->
-            <div id="clearModal" class="modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background-color:rgba(0,0,0,0.5); align-items:center; justify-content:center;">
+            <div id="clearModal" class="modal">
                 <div style="background:white; padding:20px; border-radius:8px; max-width:400px; width:90%;">
                     <h4>Confirm Clear All</h4>
                     <p>Are you sure you want to remove all IPs from the selected list?</p>
@@ -443,6 +505,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
     <script>
         // Configuration
+        const antiForgeryToken = '@Html.AntiForgeryToken()'.match(/value="([^"]+)"/)[1];
         var TIMEOUT_MS = @Json.Serialize(ViewData["MapDynamicTimeout"]);
         var USE_DYNAMIC_TIMEOUT = @Json.Serialize(ViewData["EnableMapDynamicTimeout"]);
         var MAX_CONCURRENT_REQUESTS = @Json.Serialize(ViewData["IPMarkTreadLimit"]);
@@ -457,268 +520,21 @@
 
         let currentFilter = 'all';
 
-        function filterRules(type) {
-            currentFilter = type;
-            const rows = document.querySelectorAll('#rulesTableBody tr');
-            const clearAllButton = document.getElementById('clearAllButton');
-            const buttons = document.querySelectorAll('.filter-buttons .btn');
-
-            // Update button highlight
-            buttons.forEach(btn => {
-                if (btn.textContent.trim().toLowerCase() === type.toLowerCase()) {
-                    btn.classList.remove('btn-secondary');
-                    btn.classList.add('btn-primary');
-                } else {
-                    btn.classList.remove('btn-primary');
-                    btn.classList.add('btn-secondary');
-                }
-            });
-
-            // Filter rows
-            if (type === 'all') {
-                rows.forEach(row => row.style.display = '');
-                clearAllButton.style.display = 'none';
-            } else {
-                rows.forEach(row => {
-                    if (row.getAttribute('data-type') === type.toLowerCase()) {
-                        row.style.display = '';
-                    } else {
-                        row.style.display = 'none';
-                    }
-                });
-                clearAllButton.style.display = 'inline-block';
-            }
-
-            let currentPage = @Model.CurrentPage;
-            let totalPages = @Model.TotalPages;
-
-            const rulesBody = document.querySelector('#rulesTableBody');
-            const paginationContainer = document.querySelector('#paginationContainer');
-
-            function renderPagination() {
-                let html = '';
-
-                // Previous
-                html += `<li class="page-item ${currentPage == 1 ? 'disabled' : ''}">
-                            <a href="#" class="page-link" data-page="${currentPage - 1}">Previous</a>
-                         </li>`;
-
-                // First page + ellipsis
-                if (currentPage > 4) {
-                    html += `<li class="page-item"><a href="#" class="page-link" data-page="1">1</a></li>`;
-                    html += `<li class="page-item disabled"><span class="page-link">…</span></li>`;
-                }
-
-                // Pages around current
-                const startPage = Math.max(1, currentPage - 3);
-                const endPage = Math.min(totalPages, currentPage + 3);
-                for (let i = startPage; i <= endPage; i++) {
-                    html += `<li class="page-item ${i == currentPage ? 'active' : ''}">
-                                <a href="#" class="page-link" data-page="${i}">${i}</a>
-                             </li>`;
-                }
-
-                // Last page + ellipsis
-                if (currentPage + 3 < totalPages) {
-                    html += `<li class="page-item disabled"><span class="page-link">…</span></li>`;
-                    html += `<li class="page-item"><a href="#" class="page-link" data-page="${totalPages}">${totalPages}</a></li>`;
-                }
-
-                // Next
-                html += `<li class="page-item ${currentPage == totalPages ? 'disabled' : ''}">
-                            <a href="#" class="page-link" data-page="${currentPage + 1}">Next</a>
-                         </li>`;
-
-                paginationContainer.innerHTML = html;
-                attachPaginationEvents();
-            }
-
-            function attachPaginationEvents() {
-                document.querySelectorAll('#paginationContainer .page-link').forEach(link => {
-                    link.addEventListener('click', e => {
-                        e.preventDefault();
-                        const page = parseInt(e.target.dataset.page);
-                        if (page >= 1 && page <= totalPages) {
-                            loadPage(page);
-                        }
-                    });
-                });
-            }
-
-            function loadPage(page) {
-                const rulesBody = document.querySelector('#rulesTableBody');
-                const rulesContainer = document.querySelector('#rulesContainer');
-
-                // Fade out existing rows first
-                rulesBody.classList.add('tr-fade-out');
-
-                fetch(`/Index?handler=IpRulesPageJson&page=${page}&filter=${currentFilter}`)
-                .then(res => res.json())
-                .then(data => {
-                    // After fade out, replace content
-                    setTimeout(() => {
-                        let html = '';
-                        data.rules.forEach(rule => {
-                            html += `<tr data-type="${rule.addType.toLowerCase()}">
-                                        <td>${rule.ipAddress}</td>
-                                        <td><span class="badge badge-${rule.action.toLowerCase()}">${rule.action.toUpperCase()}</span></td>
-                                        <td>${new Date(rule.dateAdded).toLocaleDateString()}</td>
-                                        <td>${rule.addType}</td>
-                                        <td>
-                                            <button class="btn btn-success btn-sm action-btn btn-uniform-size" data-action="allow" data-ip="${rule.ipAddress}">Allow</button>
-                                            <button class="btn btn-warning btn-sm action-btn btn-uniform-size" data-action="block" data-ip="${rule.ipAddress}">Block</button>
-                                            <button class="btn btn-danger btn-sm action-btn btn-uniform-size" data-action="delete" data-ip="${rule.ipAddress}">Remove</button>
-                                        </td>
-                                     </tr>`;
-                        });
-
-                        rulesBody.innerHTML = html;
-
-                        // Remove fade class to trigger fade-in
-                        rulesBody.classList.remove('tr-fade-out');
-
-                        scrollToTopAccelerating(document.getElementById('rulesContainer'), 400);
-
-
-                        // Update pagination
-                        currentPage = page;
-                        totalPages = data.totalPages;
-                        renderPagination();
-                    }, 200); // matches half of the CSS transition for smoothness
-                });
-            }
-
-
-            // **Initial load of page content**
-            loadPage(currentPage);
-        }
-
-        document.addEventListener('DOMContentLoaded', () => {
-            let currentPage = @Model.CurrentPage;
-            let totalPages = @Model.TotalPages;
-
-            const rulesBody = document.querySelector('#rulesTableBody');
-            const paginationContainer = document.querySelector('#paginationContainer');
-
-            function renderPagination() {
-                let html = '';
-
-                // Previous
-                html += `<li class="page-item ${currentPage == 1 ? 'disabled' : ''}">
-                            <a href="#" class="page-link" data-page="${currentPage - 1}">Previous</a>
-                         </li>`;
-
-                // First page + ellipsis
-                if (currentPage > 4) {
-                    html += `<li class="page-item"><a href="#" class="page-link" data-page="1">1</a></li>`;
-                    html += `<li class="page-item disabled"><span class="page-link">…</span></li>`;
-                }
-
-                // Pages around current
-                const startPage = Math.max(1, currentPage - 3);
-                const endPage = Math.min(totalPages, currentPage + 3);
-                for (let i = startPage; i <= endPage; i++) {
-                    html += `<li class="page-item ${i == currentPage ? 'active' : ''}">
-                                <a href="#" class="page-link" data-page="${i}">${i}</a>
-                             </li>`;
-                }
-
-                // Last page + ellipsis
-                if (currentPage + 3 < totalPages) {
-                    html += `<li class="page-item disabled"><span class="page-link">…</span></li>`;
-                    html += `<li class="page-item"><a href="#" class="page-link" data-page="${totalPages}">${totalPages}</a></li>`;
-                }
-
-                // Next
-                html += `<li class="page-item ${currentPage == totalPages ? 'disabled' : ''}">
-                            <a href="#" class="page-link" data-page="${currentPage + 1}">Next</a>
-                         </li>`;
-
-                paginationContainer.innerHTML = html;
-                attachPaginationEvents();
-            }
-
-            function attachPaginationEvents() {
-                document.querySelectorAll('#paginationContainer .page-link').forEach(link => {
-                    link.addEventListener('click', e => {
-                        e.preventDefault();
-                        const page = parseInt(e.target.dataset.page);
-                        if (page >= 1 && page <= totalPages) {
-                            loadPage(page);
-                        }
-                    });
-                });
-            }
-
-            function loadPage(page) {
-                const rulesBody = document.querySelector('#rulesTableBody');
-                const rulesContainer = document.querySelector('#rulesContainer');
-
-                // Fade out existing rows first
-                rulesBody.classList.add('tr-fade-out');
-
-                fetch(`/Index?handler=IpRulesPageJson&page=${page}&filter=${currentFilter}`)
-                .then(res => res.json())
-                .then(data => {
-                    // After fade out, replace content
-                    setTimeout(() => {
-                        let html = '';
-                        data.rules.forEach(rule => {
-                            html += `<tr data-type="${rule.addType.toLowerCase()}">
-                                        <td>${rule.ipAddress}</td>
-                                        <td><span class="badge badge-${rule.action.toLowerCase()}">${rule.action.toUpperCase()}</span></td>
-                                        <td>${new Date(rule.dateAdded).toLocaleDateString()}</td>
-                                        <td>${rule.addType}</td>
-                                        <td>
-                                            <button class="btn btn-success btn-sm action-btn btn-uniform-size" data-action="allow" data-ip="${rule.ipAddress}">Allow</button>
-                                            <button class="btn btn-warning btn-sm action-btn btn-uniform-size" data-action="block" data-ip="${rule.ipAddress}">Block</button>
-                                            <button class="btn btn-danger btn-sm action-btn btn-uniform-size" data-action="delete" data-ip="${rule.ipAddress}">Remove</button>
-                                        </td>
-                                     </tr>`;
-                        });
-
-                        rulesBody.innerHTML = html;
-
-                        // Remove fade class to trigger fade-in
-                        rulesBody.classList.remove('tr-fade-out');
-
-                        scrollToTopAccelerating(document.getElementById('rulesContainer'), 400);
-
-
-                        // Update pagination
-                        currentPage = page;
-                        totalPages = data.totalPages;
-                        renderPagination();
-                    }, 200); // matches half of the CSS transition for smoothness
-                });
-            }
-
-
-            // **Initial load of page content**
-            loadPage(currentPage);
-        });
-
         function scrollToTopAccelerating(container, duration = 600) {
             const start = container.scrollTop;
             const startTime = performance.now();
 
             function animate(time) {
                 const elapsed = time - startTime;
-                const progress = Math.min(elapsed / duration, 1); // 0 → 1
-
-                // Accelerating effect: quadratic easing in
+                const progress = Math.min(elapsed / duration, 1);
                 const easedProgress = progress * progress;
-
                 container.scrollTop = start * (1 - easedProgress);
-
                 if (progress < 1) {
                     requestAnimationFrame(animate);
                 }
             }
-
             requestAnimationFrame(animate);
         }
-
 
         function showClearModal() {
             document.getElementById('filterType').value = currentFilter;
@@ -729,8 +545,29 @@
             document.getElementById('clearModal').style.display = 'none';
         }
 
-        // Default view
-        document.addEventListener('DOMContentLoaded', () => filterRules('all'));
+        function filterRules(type) {
+            currentFilter = type;
+            const clearAllButton = document.getElementById('clearAllButton');
+            const buttons = document.querySelectorAll('.filter-buttons .btn:not(#clearAllButton)');
+
+            buttons.forEach(btn => {
+                if (btn.textContent.trim().toLowerCase() === type.toLowerCase()) {
+                    btn.classList.remove('btn-secondary');
+                    btn.classList.add('btn-primary');
+                } else {
+                    btn.classList.remove('btn-primary');
+                    btn.classList.add('btn-secondary');
+                }
+            });
+
+            if (type === 'all') {
+                clearAllButton.style.display = 'none';
+            } else {
+                clearAllButton.style.display = 'inline-block';
+            }
+
+            loadPage(1);
+        }
 
         // Initialize the map
         const map = L.map('map').setView([20, 0], 2);
@@ -740,62 +577,35 @@
             maxZoom: 18
         }).addTo(map);
 
-        // Get IP addresses from the table
+        // Get IP addresses from the server data
         const ipRules = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.IpRulesFull));
-        const ipAddresses = ipRules
-            .filter(r => r.ipAddress) // skip invalid entries
-            .map(r => ({
-                ip: r.ipAddress,
-                action: r.action ? r.action.toLowerCase() : 'unknown'  // default if missing
-            }));
 
-        const rows = document.querySelectorAll('#rulesTableBody tr:not(.empty-state)');
+        console.log('Raw ipRules:', ipRules);
+        console.log('ipRules length:', ipRules?.length);
+        console.log('First rule:', ipRules?.[0]);
 
-        let processed = 0;
+        // Build ipAddresses array directly from the data
+        const ipAddresses = [];
 
-        (async () => {
-            let processed = 0;
+        if (ipRules && Array.isArray(ipRules)) {
+            ipRules.forEach(rule => {
+                const ip = rule.IpAddress || rule.ipAddress;
+                const action = (rule.Action || rule.action || 'unknown').toLowerCase();
+                const addType = (rule.addType || rule.AddType || '').toLowerCase();
 
-            let start = 0;
+                if (!ip) return;
+                if (!ENABLE_MALICIOUS_MAP_MARKERS && addType === 'malicious') return;
 
-            const processBatch = () => {
-                const end = Math.min(start + BATCH_SIZE, rows.length);
+                ipAddresses.push({ ip, action });
+            });
+        }
 
-                for (let i = start; i < end; i++) {
-                    const row = rows[i];
-
-                    // skip empty-state row
-                    if (row.classList.contains('empty-state')) continue;
-
-                    // get addType from data attribute
-                    const addType = row.dataset.type;
-                    if (!ENABLE_MALICIOUS_MAP_MARKERS && addType === 'malicious') continue;
-
-                    const cells = row.children;
-                    const ip = cells[0].textContent.trim();
-                    const action = cells[1].textContent.trim().toLowerCase();
-
-                    ipAddresses.push({ ip, action });
-                    processed++;
-                }
-
-                start = end;
-
-                if (start < rows.length) {
-                    requestIdleCallback(processBatch);
-                } else {
-                    console.log('Finished processing', ipAddresses.length, 'rows');
-                    // here you can continue with ipAddresses
-                }
-            };
-
-            processBatch();
-        })();
+        console.log('Processed ipAddresses:', ipAddresses);
+        console.log('ipAddresses length:', ipAddresses.length);
 
         // Function to get geolocation for an IP
         async function getIpLocation(ip) {
             try {
-                // First, try local GeoIP lookup via Razor Page handler
                 const protocol = window.location.protocol;
                 const host = window.location.host;
                 const localUrl = `${protocol}//${host}?handler=GeoIp&ipAddress=${encodeURIComponent(ip)}`;
@@ -823,7 +633,6 @@
                     console.log(`⚠ [GeoIP Local] Request failed (${localResponse.status}), trying fallback...`);
                 }
 
-                // Fallback to ip-api.com (free, no key required, 45 requests/min)
                 console.log(`[GeoIP Fallback] Using external API (ip-api.com) for ${ip}...`);
                 const externalProtocol = window.location.protocol === 'https:' ? 'https:' : 'http:';
                 const fallbackResponse = await fetch(`${externalProtocol}//ip-api.com/json/${ip}?fields=status,country,countryCode,city,lat,lon`);
@@ -851,20 +660,15 @@
             }
         }
 
-        // Object to track markers by location
         const markersByLocation = {};
 
-        // Function to get a location key for grouping
         function getLocationKey(lat, lon) {
-            // Round to 2 decimal places to group nearby IPs
             return `${lat.toFixed(2)},${lon.toFixed(2)}`;
         }
 
-        // Function to add markers to the map
         function addMarker(location, action) {
             const locationKey = getLocationKey(location.lat, location.lon);
 
-            // Initialize marker data if it doesn't exist
             if (!markersByLocation[locationKey]) {
                 markersByLocation[locationKey] = {
                     lat: location.lat,
@@ -875,13 +679,11 @@
                 };
             }
 
-            // Add this IP to the location
             markersByLocation[locationKey].ips.push({
                 ip: location.ip,
                 action: action
             });
 
-            // Remove existing marker if it exists
             if (markersByLocation[locationKey].marker) {
                 map.removeLayer(markersByLocation[locationKey].marker);
             }
@@ -890,18 +692,16 @@
             const allowCount = ips.filter(ip => ip.action === 'allow').length;
             const blockCount = ips.filter(ip => ip.action === 'block').length;
 
-            // Determine color based on majority action
             let color;
             if (allowCount > blockCount) {
-                color = '#28a745'; // Green for mostly allowed
+                color = '#28a745';
             } else if (blockCount > allowCount) {
-                color = '#dc3545'; // Red for mostly blocked
+                color = '#dc3545';
             } else {
-                color = '#ffc107'; // Yellow for mixed
+                color = '#ffc107';
             }
 
-            // Create marker with size based on number of IPs
-            const size = Math.min(12 + (ips.length * 2), 24); // Grows with more IPs, max 24px
+            const size = Math.min(12 + (ips.length * 2), 24);
             const icon = L.divIcon({
                 className: 'custom-marker',
                 html: `<div style="background-color: ${color}; width: ${size}px; height: ${size}px; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 5px rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center; color: white; font-size: 10px; font-weight: bold;">${ips.length > 1 ? ips.length : ''}</div>`,
@@ -911,19 +711,16 @@
 
             const marker = L.marker([location.lat, location.lon], { icon }).addTo(map);
 
-            // Build popup content
             let popupContent = `<div style="max-width: 250px;">`;
             popupContent += `<strong>${location.city}, ${location.country}</strong><br>`;
             popupContent += `<div style="margin-top: 8px;">`;
 
             if (ips.length === 1) {
-                // Single IP - simple display
                 const ipData = ips[0];
                 const ipColor = ipData.action === 'allow' ? '#28a745' : '#dc3545';
                 popupContent += `<strong>${ipData.ip}</strong><br>`;
                 popupContent += `<span style="color: ${ipColor}; font-weight: 600;">${ipData.action.toUpperCase()}</span>`;
             } else {
-                // Multiple IPs - show list
                 popupContent += `<strong>${ips.length} IP Addresses:</strong><br>`;
                 popupContent += `<div style="max-height: 150px; overflow-y: auto; margin-top: 5px;">`;
                 ips.forEach(ipData => {
@@ -942,12 +739,9 @@
 
             popupContent += `</div></div>`;
             marker.bindPopup(popupContent);
-
-            // Store marker reference
             markersByLocation[locationKey].marker = marker;
         }
 
-        // Function to update stats
         function updateStats(locations, allowedCount, blockedCount) {
             const countries = new Set(locations.map(loc => loc.country));
             document.getElementById('totalIps').textContent = ipAddresses.length;
@@ -955,14 +749,12 @@
             document.getElementById('allowedCount').textContent = allowedCount;
             document.getElementById('blockedCount').textContent = blockedCount;
 
-            // Fit map to markers if we have locations
             if (locations.length > 0) {
                 const bounds = L.latLngBounds(locations.map(loc => [loc.lat, loc.lon]));
                 map.fitBounds(bounds, { padding: [50, 50] });
             }
         }
 
-        // Function to process IPs in parallel with concurrency limit
         async function processIpBatch(ipAddresses, maxConcurrent) {
             const results = [];
             const executing = [];
@@ -990,9 +782,11 @@
             return Promise.all(results);
         }
 
-        // Load and display IP locations with timeout
         async function loadIpLocations() {
+            console.log('Starting loadIpLocations with', ipAddresses.length, 'IPs');
+
             if (ipAddresses.length === 0) {
+                console.log('No IP addresses to process');
                 return;
             }
 
@@ -1001,11 +795,9 @@
             let blockedCount = 0;
             const startTime = Date.now();
 
-            // Calculate timeout dynamically or use fixed value
             let timeoutMs;
             if (USE_DYNAMIC_TIMEOUT) {
-                // Dynamic calculation: with parallel requests, we can be more aggressive
-                const estimatedTimePerBatch = 1500; // milliseconds per batch
+                const estimatedTimePerBatch = 1500;
                 const batches = Math.ceil(ipAddresses.length / MAX_CONCURRENT_REQUESTS);
                 timeoutMs = Math.max(3000, Math.min(30000, batches * estimatedTimePerBatch));
                 console.log(`Using dynamic timeout: ${timeoutMs}ms for ${ipAddresses.length} IPs (${batches} batches)`);
@@ -1013,26 +805,17 @@
                 timeoutMs = TIMEOUT_MS;
             }
 
-            // Create a timeout promise
             const timeoutPromise = new Promise(resolve => setTimeout(() => resolve('timeout'), timeoutMs));
-
-            // Process IPs in parallel
             const resultsPromise = processIpBatch(ipAddresses, MAX_CONCURRENT_REQUESTS);
-
-            // Race between getting results and timeout
             const outcome = await Promise.race([resultsPromise, timeoutPromise]);
 
             if (outcome === 'timeout') {
                 console.log(`Timeout reached after ${timeoutMs}ms. Displaying partial results.`);
-                // Give a small grace period to finish any in-flight requests
                 await new Promise(resolve => setTimeout(resolve, 500));
             }
 
-            // Get whatever results we have
-            const results = await Promise.allSettled([resultsPromise].flat());
             const completedResults = outcome === 'timeout' ? [] : await resultsPromise;
 
-            // Process completed results
             for (const result of completedResults) {
                 if (result && result.location) {
                     locations.push({ ...result.location, action: result.action });
@@ -1043,15 +826,113 @@
                 }
             }
 
-            // Update stats with whatever we have
             updateStats(locations, allowedCount, blockedCount);
 
             const elapsed = Date.now() - startTime;
             console.log(`Loaded ${locations.length} of ${ipAddresses.length} locations in ${elapsed}ms`);
         }
 
-        // Initialize the map with data
-        loadIpLocations();
+        // Pagination system
+        document.addEventListener('DOMContentLoaded', () => {
+            let currentPage = @Model.CurrentPage;
+            let totalPages = @Model.TotalPages;
+
+            const rulesBody = document.querySelector('#rulesTableBody');
+            const paginationContainer = document.querySelector('#paginationContainer');
+
+            function renderPagination() {
+                let html = '';
+
+                html += `<li class="page-item ${currentPage == 1 ? 'disabled' : ''}">
+                            <a href="#" class="page-link" data-page="${currentPage - 1}">Previous</a>
+                         </li>`;
+
+                if (currentPage > 4) {
+                    html += `<li class="page-item"><a href="#" class="page-link" data-page="1">1</a></li>`;
+                    html += `<li class="page-item disabled"><span class="page-link">…</span></li>`;
+                }
+
+                const startPage = Math.max(1, currentPage - 3);
+                const endPage = Math.min(totalPages, currentPage + 3);
+                for (let i = startPage; i <= endPage; i++) {
+                    html += `<li class="page-item ${i == currentPage ? 'active' : ''}">
+                                <a href="#" class="page-link" data-page="${i}">${i}</a>
+                             </li>`;
+                }
+
+                if (currentPage + 3 < totalPages) {
+                    html += `<li class="page-item disabled"><span class="page-link">…</span></li>`;
+                    html += `<li class="page-item"><a href="#" class="page-link" data-page="${totalPages}">${totalPages}</a></li>`;
+                }
+
+                html += `<li class="page-item ${currentPage == totalPages ? 'disabled' : ''}">
+                            <a href="#" class="page-link" data-page="${currentPage + 1}">Next</a>
+                         </li>`;
+
+                paginationContainer.innerHTML = html;
+                attachPaginationEvents();
+            }
+
+            function attachPaginationEvents() {
+                document.querySelectorAll('#paginationContainer .page-link').forEach(link => {
+                    link.addEventListener('click', e => {
+                        e.preventDefault();
+                        const page = parseInt(e.target.dataset.page);
+                        if (page >= 1 && page <= totalPages) {
+                            loadPage(page);
+                        }
+                    });
+                });
+            }
+
+            window.loadPage = function(page) {
+                const rulesBody = document.querySelector('#rulesTableBody');
+                const rulesContainer = document.querySelector('#rulesContainer');
+
+                rulesBody.classList.add('tr-fade-out');
+
+                fetch(`/Index?handler=IpRulesPageJson&page=${page}&filter=${currentFilter}`)
+                .then(res => res.json())
+                .then(data => {
+                    setTimeout(() => {
+                        let html = '';
+                        data.rules.forEach(rule => {
+                            html += `<tr data-type="${rule.addType.toLowerCase()}">
+                                        <td>${rule.ipAddress}</td>
+                                        <td><span class="badge badge-${rule.action.toLowerCase()}">${rule.action.toUpperCase()}</span></td>
+                                        <td>${new Date(rule.dateAdded).toLocaleDateString()}</td>
+                                        <td>${rule.addType}</td>
+                                        <td>
+                                            <form method="post" style="display: inline;">
+                                                <input type="hidden" name="__RequestVerificationToken" value="${antiForgeryToken}">
+                                                <input type="hidden" name="ipAddress" value="${rule.ipAddress}">
+                                                <button type="submit" formaction="?handler=AllowRule" class="btn btn-success btn-sm btn-uniform-size">Allow</button>
+                                                <button type="submit" formaction="?handler=BlockRule" class="btn btn-warning btn-sm btn-uniform-size">Block</button>
+                                                <button type="submit" formaction="?handler=DeleteRule" class="btn btn-danger btn-sm btn-uniform-size">Remove</button>
+                                            </form>
+                                        </td>
+                                     </tr>`;
+                        });
+
+                        rulesBody.innerHTML = html;
+                        rulesBody.classList.remove('tr-fade-out');
+                        scrollToTopAccelerating(document.getElementById('rulesContainer'), 400);
+
+                        currentPage = page;
+                        totalPages = data.totalPages;
+                        renderPagination();
+                    }, 200);
+                });
+            }
+
+            loadPage(currentPage);
+        });
+
+        // Initialize map after a delay to ensure everything is ready
+        setTimeout(() => {
+            console.log('Initializing map...');
+            loadIpLocations();
+        }, 1000);
     </script>
 </body>
 </html>
