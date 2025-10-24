@@ -1,0 +1,52 @@
+services:
+  npm-management-interface:
+    image: chinatsu1/nginxproxymanagermanagementinterface:latest
+    container_name: npm-management-interface
+    restart: unless-stopped
+    ports:
+      - "[choose an external port for the web ui]:8080"
+    volumes:
+      - /{Root Dir}/npm-management/interface_dataroot:/data
+      - /{Root Dir}/npm-management/host_data:/app/wwwroot/host_data
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+	    - ServiceVariables__IPMapMarkerLoadingThreadCount=40
+	    - ServiceVariables__EnableMalciousMapMarkers=false
+	    - ServiceVariables__EnableMapDynamicTimeout=false
+	    - ServiceVariables__MapLoadingTimeout=3000
+	    - ServiceVariables__IPIndexingBatchSize=500
+	    - ServiceVariables__MaxIPsPerPage=30
+	    - ServiceVariables__useDB=true
+	    - ServiceVariables__dbIP={dbServerIP}
+	    - ServiceVariables__dbUser={dbusername}
+	    - ServiceVariables__dbPassword={dbpassword}
+	    - ServiceVariables__dbTable={ipTable}
+	    - ServiceVariables__dbName={dbName}
+    user: "1000:1000"
+
+  geoipupdate:
+    image: maxmindinc/geoipupdate
+    restart: unless-stopped
+    environment:
+      GEOIPUPDATE_ACCOUNT_ID: '{accountID}'
+      GEOIPUPDATE_LICENSE_KEY: '{licenceKey}'
+      GEOIPUPDATE_EDITION_IDS: 'GeoLite2-City  GeoLite2-ASN'
+      GEOIPUPDATE_FREQUENCY: 24
+    volumes:
+      - /{Root Dir}/npm-management/host_data:/usr/share/GeoIP
+	  
+  mssql_server:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: mssql-instance
+    environment:
+      ACCEPT_EULA: 'Y'
+      MSSQL_SA_PASSWORD: '{password}' 
+      MSSQL_PID: 'Developer' 
+    ports:
+      - "1433:1433"
+    volumes:
+      - mssql_data:/var/opt/mssql 
+    restart: unless-stopped
+	
+volumes:
+  mssql_data:
