@@ -2,7 +2,7 @@
 
 Prerequisites
 
-1. Docker and Docker Compose (v2) are installed on the host device.
+    Docker and Docker Compose (v2) are installed on the host device.
 
 File System Structure:
   There is a file system structure under Host Config/Root Dir.
@@ -10,7 +10,7 @@ File System Structure:
 
 After copying the structure and filling out the relevant data, you can run:
 
-  docker compose up -d
+    docker compose up -d
 
 This will automatically create all required directories.
 
@@ -23,14 +23,14 @@ You may want to schedule the included bash scripts using cron. For example:
 
 Add these under the sudo crontab using:
   
-  sudo crontab -e
+    sudo crontab -e
 
 After adding the cron jobs, run the scripts in the following order once:
 
-1. combine_logs.sh
-2. update_rpConnections_db.sh
-3. update_manualblacklist_from_sql.sh
-4. update-blacklist.sh
+    sudo bash combine_logs.sh
+    sudo bash update_rpConnections_db.sh
+    sudo bash update_manualblacklist_from_sql.sh
+    sudo bash update-blacklist.sh
 
 This will initialize automatic operations.
 
@@ -40,9 +40,10 @@ If you do not want to use a MSSQL database: Set ServiceVariables__useDB to false
   Automatic blocks (from SQL queries) will not be added.
 
 There are three types of IP blocks:
-- Manual: Added via the interface.
-- Automatic: Determined by SQL queries, based on X amount of request within a set timeframe.
-- Malicious: Known malicious IPs fetched from an external API.
+
+    Manual: Added via the interface.
+    Automatic: Determined by SQL queries, based on X amount of request within a set timeframe.
+    Malicious: Known malicious IPs fetched from an external API.
 
 <img width="1031" height="1248" alt="image" src="https://github.com/user-attachments/assets/b9247a49-21a6-4bd5-8bfc-7343de8b1695" />
 <img width="1091" height="652" alt="image" src="https://github.com/user-attachments/assets/3ed012c8-7bd8-46ae-b037-7706ffa1c0f1" />
