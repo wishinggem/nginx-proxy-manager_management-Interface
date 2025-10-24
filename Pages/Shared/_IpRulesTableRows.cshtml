@@ -1,0 +1,25 @@
+﻿@model nginx_proxy_manager_management_Interface.Pages.IndexModel
+
+@if (!Model.IpRules.Any())
+{
+    <tr class="empty-state">
+        <td colspan="5">No IP rules configured yet</td>
+    </tr>
+}
+else
+{
+    @foreach (var rule in Model.IpRules)
+    {
+        <tr data-type="@rule.addType.ToLower()">
+            <td>@rule.IpAddress</td>
+            <td><span class="badge badge-@rule.Action.ToLower()">@rule.Action.ToUpper()</span></td>
+            <td>@rule.DateAdded.ToShortDateString()</td>
+            <td>@rule.addType</td>
+            <td>
+                <button class="btn btn-success btn-sm action-btn btn-uniform-size" data-action="allow" data-ip="@rule.IpAddress">Allow</button>
+                <button class="btn btn-warning btn-sm action-btn btn-uniform-size" data-action="block" data-ip="@rule.IpAddress">Block</button>
+                <button class="btn btn-danger btn-sm action-btn btn-uniform-size" data-action="delete" data-ip="@rule.IpAddress">Remove</button>
+            </td>
+        </tr>
+    }
+}

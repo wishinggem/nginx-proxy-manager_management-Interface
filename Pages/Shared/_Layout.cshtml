@@ -1,0 +1,131 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - NPM Management Interface</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/nginx_proxy_manager_management_Interface.styles.css" asp-append-version="true" />
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+
+        .navbar {
+            background: transparent !important;
+            backdrop-filter: none;
+            border-bottom: none !important;
+            box-shadow: none;
+            padding: 15px 0;
+        }
+
+        .navbar-brand {
+            font-weight: 700;
+            font-size: 20px;
+            color: black !important;
+        }
+
+        .nav-link {
+            font-weight: 500;
+            color: black !important;
+            transition: all 0.3s;
+            position: relative;
+        }
+
+            .nav-link:hover {
+                color: grey !important;
+            }
+
+            .nav-link::after {
+                content: '';
+                position: absolute;
+                bottom: 0;
+                left: 50%;
+                width: 0;
+                height: 2px;
+                background: white;
+                transition: all 0.3s;
+                transform: translateX(-50%);
+            }
+
+            .nav-link:hover::after {
+                width: 80%;
+            }
+
+        .container {
+            max-width: 1200px;
+        }
+
+        main {
+            min-height: calc(100vh - 200px);
+            padding: 30px 0;
+        }
+
+        .footer {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-top: none !important;
+            padding: 20px 0;
+            margin-top: 40px;
+            box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.1);
+        }
+
+            .footer .container {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                color: #666;
+                font-size: 14px;
+            }
+
+            .footer a {
+                color: #667eea;
+                text-decoration: none;
+                transition: color 0.3s;
+            }
+
+                .footer a:hover {
+                    color: #764ba2;
+                }
+    </style>
+</head>
+<body>
+    <header>
+        <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-light">
+            <div class="container">
+                <a class="navbar-brand" asp-area="" asp-page="/Index">Management Interface</a>
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse" aria-controls="navbarSupportedContent"
+                        aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
+                    <ul class="navbar-nav flex-grow-1">
+                        <li class="nav-item">
+                            <a class="nav-link" asp-area="" asp-page="/BackupController">IP Management</a>
+                        </li>
+                    </ul>
+                    <span class="navbar-text text-muted small ms-3">v1.0.1</span>
+                </div>
+            </div>
+        </nav>
+    </header>
+    <div class="container">
+        <main role="main" class="pb-3">
+            @RenderBody()
+        </main>
+    </div>
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.js"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>
