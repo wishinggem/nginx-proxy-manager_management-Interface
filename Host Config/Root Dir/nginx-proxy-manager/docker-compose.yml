@@ -1,0 +1,93 @@
+services:
+  npm:
+    image: 'jc21/nginx-proxy-manager:latest'
+    restart: unless-stopped
+    ports:
+      - '80:80' # Public HTTP Port
+      - '443:443' # Public HTTPS Port
+      - '81:81' # Admin Web Port
+    environment:
+      DB_MYSQL_HOST: "db"
+      DB_MYSQL_PORT: 3306
+      DB_MYSQL_USER: "{mariauser}"
+      DB_MYSQL_PASSWORD: "{mariapass}"
+      DB_MYSQL_NAME: "npm"
+    volumes:
+      - ./data:/data
+      - ./letsencrypt:/etc/letsencrypt
+    depends_on:
+      - db
+
+  db:
+    image: 'jc21/mariadb-aria:latest'
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: 'npm'
+      MYSQL_DATABASE: 'npm'
+      MYSQL_USER: '{mariauser}'
+      MYSQL_PASSWORD: '{mariapass}'
+    volumes:
+      - ./mysql:/var/lib/mysql
+
+  npmgraf:
+    image: smilebasti/npmgrafstats:latest
+    restart: unless-stopped
+    environment:
+      REDIRECTION_LOGS: 'TRUE'
+      INTERNAL_LOGS: 'TRUE'
+      MONITORING_LOGS: 'TRUE'
+      INFLUX_HOST: 'http://influxdb:8086'
+      INFLUX_BUCKET: 'npmgrafstats'
+      INFLUX_ORG: 'npmgrafstats'
+      INFLUX_TOKEN: '{token}'
+    volumes:
+      - ./data/logs:/logs
+      - ./geolite:/geolite
+    depends_on:
+      - geoipupdate
+      - npm
+
+  influxdb:
+    image: influxdb:2.7-alpine
+    restart: unless-stopped
+    environment:
+      DOCKER_INFLUXDB_INIT_MODE: 'setup'
+      DOCKER_INFLUXDB_INIT_USERNAME: '{username}'
+      DOCKER_INFLUXDB_INIT_PASSWORD: '{password}' # atleast 8 characters
+      DOCKER_INFLUXDB_INIT_ORG: 'npmgrafstats'
+      DOCKER_INFLUXDB_INIT_BUCKET: 'npmgrafstats'
+    volumes:
+	# Mount for influxdb data directory and configuration
+      - ./influxdbv2:/var/lib/influxdb2
+    ports:
+      - '8086:8086'
+
+  geoipupdate:
+    image: maxmindinc/geoipupdate
+    restart: unless-stopped
+    environment:
+      GEOIPUPDATE_ACCOUNT_ID: '{id-same as management dir}'
+      GEOIPUPDATE_LICENSE_KEY: '{key-same as management dir}'
+      GEOIPUPDATE_EDITION_IDS: 'GeoLite2-City  GeoLite2-ASN'
+      GEOIPUPDATE_FREQUENCY: 24
+    volumes:
+      - ./geolite:/usr/share/GeoIP
+
+  portainer:
+    image: portainer/portainer-ce:latest
+    restart: always
+    ports:
+      - '8000:8000'
+      - '9000:9000'
+      - '9443:9443'
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./portainer_data:/data
+
+  grafana:
+    image: grafana/grafana-oss:latest
+    restart: unless-stopped
+    ports:
+      - '3000:3000'
+    volumes:
+      - ./grafana-storage:/var/lib/grafana # after start: sudo chown 472:472 grafana-storage
